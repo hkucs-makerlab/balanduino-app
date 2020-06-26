@@ -19,7 +19,6 @@
 
 package com.tkjelectronics.balanduino;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -40,6 +39,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -52,7 +53,7 @@ import android.widget.Toast;
 import com.viewpagerindicator.UnderlinePageIndicator;
 
 public class BalanduinoActivity extends AppCompatActivity  {
-    private static final String TAG = "Balanduino";
+    private static final String TAG = BalanduinoActivity.class.getSimpleName();
     public static final boolean D = BuildConfig.DEBUG; // This is automatically set when building
 
     public static Activity activity;
@@ -168,7 +169,6 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public final static int responsePairConfirmationLength = 1;
 
     @Override
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         activity = this;
@@ -392,7 +392,9 @@ public class BalanduinoActivity extends AppCompatActivity  {
         currentTabSelected = tab.getPosition();
 
         Resources mResources = getResources();
-        if (mResources.getBoolean(R.bool.isTablet) && mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE && currentTabSelected == ViewPagerAdapter.INFO_FRAGMENT) { // Check if the last tab is selected in landscape mode
+        if (mResources.getBoolean(R.bool.isTablet) &&
+            mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE &&
+            currentTabSelected == ViewPagerAdapter.INFO_FRAGMENT) { // Check if the last tab is selected in landscape mode
             currentTabSelected -= 1; // If so don't go any further
             ActionBar bar = getSupportActionBar();
             bar.selectTab(bar.getTabAt(currentTabSelected));
@@ -487,10 +489,8 @@ public class BalanduinoActivity extends AppCompatActivity  {
                 return true;
             case R.id.menu_settings:
                 // Open up the settings dialog
-                SettingsDialogFragment dialogFragment = new SettingsDialogFragment();
-                /* to be fix
-                dialogFragment.show(getSupportFragmentManager(), null);
-                 */
+                // to be fix
+                //dialogFragment.show(getSupportFragmentManager(), null);
                 return true;
             case android.R.id.home:
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://balanduino.net/"));

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pid_info_tab"><![CDATA[PID & INFO]]></string>
+    <string name="graph_tab">GRAPH</string>
+    <string name="joystick_tab">JOYSTICK</string>
+    <string name="imu_tab">IMU</string>
+</resources>

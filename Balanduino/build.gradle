@@ -23,7 +23,7 @@ android {
     compileSdkVersion 28
 
     defaultConfig {
-        applicationId "com.tkjelectronics.balanduino"
+        applicationId "com.makerlab.balanduino"
         minSdkVersion 15
         targetSdkVersion 28
         versionName = project.versionName
@@ -86,6 +86,7 @@ dependencies {
     implementation project(path: ':ViewpagerIndicator-2.4.1')
     implementation project(path: ':GraphView')
     usbImplementation project(path: ':PhysicaloidLibrary')
+    implementation 'com.android.support:design:28.0.0'
 
 }
 

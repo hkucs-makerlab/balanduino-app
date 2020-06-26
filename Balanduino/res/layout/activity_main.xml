@@ -6,6 +6,32 @@
     android:orientation="vertical"
     tools:context=".BalanduinoActivity">
 
+    <android.support.design.widget.TabLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <android.support.design.widget.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/imu_tab" />
+
+        <android.support.design.widget.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/joystick_tab" />
+
+        <android.support.design.widget.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/graph_tab" />
+
+        <android.support.design.widget.TabItem
+            android:id="@+id/tabItem"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pid_info_tab" />
+    </android.support.design.widget.TabLayout>
+
     <com.tkjelectronics.balanduino.CustomViewPager
         android:id="@+id/pager"
         android:layout_width="match_parent"
