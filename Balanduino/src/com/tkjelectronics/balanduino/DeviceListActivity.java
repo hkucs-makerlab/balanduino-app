@@ -48,7 +48,7 @@ import java.util.Set;
  */
 public class DeviceListActivity extends Activity {
     // Debugging
-    private static final String TAG = "DeviceListActivity";
+    private static final String LOG_TAG = "DeviceListActivity";
     private static final boolean D = BalanduinoActivity.D;
 
     // Return Intent extra
@@ -124,6 +124,8 @@ public class DeviceListActivity extends Activity {
             mPairedDevicesArrayAdapter.add(noDevices);
             mPairedDevicesArrayAdapter.setSelectable(false);
         }
+        if (D)
+            Log.i(LOG_TAG, "onCreate()");
     }
 
     private class CustomArrayAdapter extends ArrayAdapter<String> {
@@ -158,6 +160,8 @@ public class DeviceListActivity extends Activity {
 
         // Unregister broadcast listeners
         this.unregisterReceiver(mReceiver);
+        if (D)
+            Log.i(LOG_TAG, "onDestroy()");
     }
 
     /**
@@ -165,7 +169,7 @@ public class DeviceListActivity extends Activity {
      */
     private void doDiscovery() {
         if (D)
-            Log.d(TAG, "doDiscovery()");
+            Log.d(LOG_TAG, "doDiscovery()");
 
         // Indicate scanning in the title
         setProgressBarIndeterminateVisibility(true);
@@ -190,7 +194,7 @@ public class DeviceListActivity extends Activity {
                 return;
             String info = text.toString();
             if (D)
-                Log.d(TAG, "Info: " + info);
+                Log.d(LOG_TAG, "Info: " + info);
 
             mBtAdapter.cancelDiscovery(); // Cancel discovery because it's costly and we're about to connect
 
@@ -218,7 +222,7 @@ public class DeviceListActivity extends Activity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE); // Get the BluetoothDevice object from the Intent
                 if (device != null) {
                     if (D)
-                        Log.i(TAG, "Device name: " + device.getName());
+                        Log.i(LOG_TAG, "Device name: " + device.getName());
                     if (device.getBondState() != BluetoothDevice.BOND_BONDED) // If it's already paired, skip it, because it's been listed already
                         mNewDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
                 }
