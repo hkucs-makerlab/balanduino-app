@@ -39,8 +39,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
+import android.support.design.widget.TabLayout;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -50,10 +49,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 
-import com.viewpagerindicator.UnderlinePageIndicator;
-
-public class BalanduinoActivity extends AppCompatActivity  {
-    private static final String TAG = BalanduinoActivity.class.getSimpleName();
+public class BalanduinoActivity extends AppCompatActivity implements TabLayout.OnTabSelectedListener  {
+    private static final String LOG_TAG = BalanduinoActivity.class.getSimpleName();
     public static final boolean D = BuildConfig.DEBUG; // This is automatically set when building
 
     public static Activity activity;
@@ -86,7 +83,6 @@ public class BalanduinoActivity extends AppCompatActivity  {
     private boolean btSecure; // If it's a new device we will pair with the device
     public static boolean stopRetrying;
 
-    private UnderlinePageIndicator mUnderlinePageIndicator;
     public static int currentTabSelected;
 
     public static String accValue = "";
@@ -167,7 +163,8 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public final static int responseIMULength = 4;
     public final static int responseStatusLength = 3;
     public final static int responsePairConfirmationLength = 1;
-
+    private TabLayout tabLayout;
+    private CustomViewPager mViewPager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -200,7 +197,9 @@ public class BalanduinoActivity extends AppCompatActivity  {
 
         // If the adapter is null, then Bluetooth is not supported
         if (mBluetoothAdapter == null) {
-            showToast("Bluetooth is not available", Toast.LENGTH_LONG);
+            if (D) {
+                Log.d(LOG_TAG, "No bluetooth adapter!");
+            }
             finish();
             return;
         }
@@ -215,66 +214,47 @@ public class BalanduinoActivity extends AppCompatActivity  {
         actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
         actionBar.setDisplayHomeAsUpEnabled(true);
         */
+        tabLayout = findViewById(R.id.tab_layout);
+        tabLayout.addOnTabSelectedListener(this); // listen to detect tab selection
+        TabLayout.TabLayoutOnPageChangeListener pageListener = new TabLayout.TabLayoutOnPageChangeListener(tabLayout);
         // Create the adapter that will return a fragment for each of the primary sections of the app.
         ViewPagerAdapter mViewPagerAdapter = new ViewPagerAdapter(getApplicationContext(), getSupportFragmentManager());
 
         // Set up the ViewPager with the adapter.
-        CustomViewPager mViewPager = (CustomViewPager) findViewById(R.id.pager);
+        mViewPager = (CustomViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mViewPagerAdapter);
+        mViewPager.addOnPageChangeListener(pageListener);
 
         if (getResources().getBoolean(R.bool.isTablet))
             mViewPager.setOffscreenPageLimit(2); // Since two fragments is selected in landscape mode, this is used to smooth things out
 
-        // Bind the underline indicator to the adapter
-        mUnderlinePageIndicator = (UnderlinePageIndicator) findViewById(R.id.indicator);
-        mUnderlinePageIndicator.setViewPager(mViewPager);
-        mUnderlinePageIndicator.setFades(false);
-
-        // When swiping between different sections, select the corresponding
-        // tab. We can also use ActionBar.Tab#select() to do this if we have
-        // a reference to the Tab.
-        mUnderlinePageIndicator
-                .setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-                    @Override
-                    public void onPageSelected(int position) {
-                        if (D)
-                            Log.d(TAG, "ViewPager position: " + position);
-                        /* to be fix
-                        if (position < actionBar.getTabCount()) // Needed for when in landscape mode
-                            actionBar.setSelectedNavigationItem(position);
-                        else
-                            mUnderlinePageIndicator.setCurrentItem(position - 1);
-
-                         */
-                    }
-                });
-
         int count = mViewPagerAdapter.getCount();
         Resources mResources = getResources();
         boolean landscape = false;
-        if (mResources.getBoolean(R.bool.isTablet) && mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        if (mResources.getBoolean(R.bool.isTablet) &&
+                mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             landscape = true;
             count -= 1; // There is one less tab when in landscape mode
         }
-
+/*
         for (int i = 0; i < count; i++) { // For each of the sections in the app, add a tab to the action bar
             String text;
             if (landscape && i == count - 1)
                 text = mViewPagerAdapter.getPageTitle(i) + " & " + mViewPagerAdapter.getPageTitle(i + 1); // Last tab in landscape mode have two titles in one tab
             else
                 text = mViewPagerAdapter.getPageTitle(i).toString();
-
             // Create a tab with text corresponding to the page title defined by
             // the adapter. Also specify this Activity object, which implements
             // the TabListener interface, as the callback (listener) for when
             // this tab is selected.
-            /* to be fix
+            // to be fix
             actionBar.addTab(actionBar.newTab()
                     .setText(text)
                     .setTabListener(this));
 
-             */
+
         }
+        */
         try {
             PackageManager mPackageManager = getPackageManager();
             if (mPackageManager != null)
@@ -288,12 +268,12 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public void onStart() {
         super.onStart();
         if (D)
-            Log.d(TAG, "++ ON START ++");
+            Log.d(LOG_TAG, "++ ON START ++");
         // If BT is not on, request that it be enabled.
         // setupChat() will then be called during onActivityResult
         if (!mBluetoothAdapter.isEnabled()) {
             if (D)
-                Log.d(TAG, "Request enable BT");
+                Log.d(LOG_TAG, "Request enable BT");
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
         } else
@@ -317,7 +297,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public void onStop() {
         super.onStop();
         if (D)
-            Log.d(TAG, "-- ON STOP --");
+            Log.d(LOG_TAG, "-- ON STOP --");
         // unregister sensor listeners to prevent the activity from draining the
         // device's battery.
         mSensorFusion.unregisterListeners();
@@ -348,15 +328,17 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public void onDestroy() {
         super.onDestroy();
         if (D)
-            Log.d(TAG, "--- ON DESTROY ---");
-        mSensorFusion.unregisterListeners();
+            Log.d(LOG_TAG, "--- ON DESTROY ---");
+        if (mSensorFusion!=null) {
+            mSensorFusion.unregisterListeners();
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         if (D)
-            Log.d(TAG, "- ON PAUSE -");
+            Log.d(LOG_TAG, "- ON PAUSE -");
         // Unregister sensor listeners to prevent the activity from draining the device's battery.
         mSensorFusion.unregisterListeners();
         if (mChatService != null) { // Send stop command and stop sending graph data command
@@ -369,7 +351,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
     public void onResume() {
         super.onResume();
         if (D)
-            Log.d(TAG, "+ ON RESUME +");
+            Log.d(LOG_TAG, "+ ON RESUME +");
         // Restore the sensor listeners when user resumes the application.
         mSensorFusion.initListeners();
     }
@@ -379,16 +361,36 @@ public class BalanduinoActivity extends AppCompatActivity  {
             return;
 
         if (D)
-            Log.d(TAG, "setupBTService()");
+            Log.d(LOG_TAG, "setupBTService()");
         if (mBluetoothHandler == null)
             mBluetoothHandler = new BluetoothHandler(this);
         mChatService = new BluetoothChatService(mBluetoothHandler, mBluetoothAdapter); // Initialize the BluetoothChatService to perform Bluetooth connections
     }
+    // TabLayout.OnTabSelectedListener
+
+    @Override
+    public void onTabSelected(TabLayout.Tab tab) {
+        if (D) {
+            Log.e(LOG_TAG, "onTabSelected() :");
+        }
+       mViewPager.setCurrentItem(tab.getPosition());
+    }
+
+    @Override
+    public void onTabUnselected(TabLayout.Tab tab) {
+
+    }
+
+    @Override
+    public void onTabReselected(TabLayout.Tab tab) {
+
+    }
+
 /* to be fix
     @Override
     public void onTabSelected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
         if (D)
-            Log.d(TAG, "onTabSelected: " + tab.getPosition());
+            Log.d(LOG_TAG, "onTabSelected: " + tab.getPosition());
         currentTabSelected = tab.getPosition();
 
         Resources mResources = getResources();
@@ -432,7 +434,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
     @Override
     public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
         if (D)
-            Log.d(TAG, "onTabUnselected: " + tab.getPosition() + " " + currentTabSelected);
+            Log.d(LOG_TAG, "onTabUnselected: " + tab.getPosition() + " " + currentTabSelected);
         if ((checkTab(ViewPagerAdapter.IMU_FRAGMENT) || checkTab(ViewPagerAdapter.JOYSTICK_FRAGMENT)) && mChatService != null) { // Send stop command if the user selects another tab
             if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
                 mChatService.write(sendStop);
@@ -461,7 +463,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (D)
-            Log.d(TAG, "onPrepareOptionsMenu");
+            Log.d(LOG_TAG, "onPrepareOptionsMenu");
         MenuItem menuItem = menu.findItem(R.id.menu_connect); // Find item
         if (mChatService != null && mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
             menuItem.setIcon(R.drawable.device_access_bluetooth_connected);
@@ -473,7 +475,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         if (D)
-            Log.d(TAG, "onCreateOptionsMenu");
+            Log.d(LOG_TAG, "onCreateOptionsMenu");
         //getSupportMenuInflater().inflate(R.menu.menu, menu); // Inflate the menu
         getMenuInflater().inflate(R.menu.menu, menu);
         return true;
@@ -529,7 +531,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
                 case MESSAGE_STATE_CHANGE:
                     mBalanduinoActivity.supportInvalidateOptionsMenu();
                     if (D)
-                        Log.i(TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
+                        Log.i(LOG_TAG, "MESSAGE_STATE_CHANGE: " + msg.arg1);
                     switch (msg.arg1) {
                         case BluetoothChatService.STATE_CONNECTED:
                             BalanduinoActivity.showToast(mBalanduinoActivity.getString(R.string.connected_to) + " " + mConnectedDeviceName, Toast.LENGTH_SHORT);
@@ -605,7 +607,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
                     break;
                 case MESSAGE_RETRY:
                     if (D)
-                        Log.d(TAG, "MESSAGE_RETRY");
+                        Log.d(LOG_TAG, "MESSAGE_RETRY");
                     mBalanduinoActivity.connectDevice(null, true);
                     break;
             }
@@ -614,7 +616,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (D)
-            Log.d(TAG, "onActivityResult " + resultCode);
+            Log.d(LOG_TAG, "onActivityResult " + resultCode);
         switch (requestCode) {
             case REQUEST_CONNECT_DEVICE:
                 // When DeviceListActivity returns with a device to connect to
@@ -628,7 +630,7 @@ public class BalanduinoActivity extends AppCompatActivity  {
                 else {
                     // User did not enable Bluetooth or an error occured
                     if (D)
-                        Log.d(TAG, "BT not enabled");
+                        Log.d(LOG_TAG, "BT not enabled");
                     showToast(getString(R.string.bt_not_enabled_leaving), Toast.LENGTH_SHORT);
                     finish();
                 }
