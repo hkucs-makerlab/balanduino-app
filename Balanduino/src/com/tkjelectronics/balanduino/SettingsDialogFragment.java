@@ -23,7 +23,9 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -33,14 +35,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
-public class SettingsDialogFragment extends Fragment {
+public class SettingsDialogFragment extends DialogFragment {
     private int maxAngle, maxTurning;
     private boolean backToSpot;
-
-
-    // to be fix - add for missing
-    void dismiss() {
-    }
 
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         View view = getActivity().getLayoutInflater().inflate(R.layout.settings_dialog, null);
@@ -209,9 +206,9 @@ public class SettingsDialogFragment extends Fragment {
         return builder.create();
     }
 
-
     public void onCancel(DialogInterface dialog) {
         // User pressed back, home or pressed outside the dialog
         BalanduinoActivity.mSensorFusion.tempFilter_coefficient = BalanduinoActivity.mSensorFusion.filter_coefficient;
     }
+
 }
