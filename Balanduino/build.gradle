@@ -83,7 +83,7 @@ dependencies {
     //implementation 'com.viewpagerindicator:viewpagerindicator:2.4.1'
     //implementation 'com.actionbarsherlock:actionbarsherlock:4.4.0@aar'
     //usbImplementation 'com.physicaloid:physicaloid:1.0'
-    implementation project(path: ':ViewpagerIndicator-2.4.1')
+    //implementation project(path: ':ViewpagerIndicator-2.4.1')
     implementation project(path: ':GraphView')
     usbImplementation project(path: ':PhysicaloidLibrary')
     implementation 'com.android.support:design:28.0.0'

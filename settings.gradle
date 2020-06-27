@@ -1,2 +1,2 @@
-include ':Balanduino', ':ViewpagerIndicator-2.4.1', ':GraphView', ':PhysicaloidLibrary'
+include ':Balanduino',  ':GraphView', ':PhysicaloidLibrary'
 //rootProject.name=' '
