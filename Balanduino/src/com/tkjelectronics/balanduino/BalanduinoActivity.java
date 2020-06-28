@@ -448,10 +448,10 @@ public class BalanduinoActivity extends AppCompatActivity implements TabLayout.O
                 SettingsDialogFragment dialogFragment = new SettingsDialogFragment();
                 dialogFragment.show(getSupportFragmentManager(),"setting dialog");
                 return true;
-            case android.R.id.home:
+/*            case android.R.id.home:
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://balanduino.net/"));
                 startActivity(browserIntent);
-                return true;
+                return true;*/
             default:
                 return super.onOptionsItemSelected(item);
         }
