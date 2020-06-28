@@ -20,7 +20,4 @@
   <component name="ProjectType">
     <option name="id" value="Android" />
   </component>
-  <component name="TerminalProjectOptionsProvider">
-    <option name="myStartingDirectory" value="$PROJECT_DIR$/../android-fundamentals-apps-v2" />
-  </component>
 </project>
