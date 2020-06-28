@@ -24,8 +24,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -40,11 +39,12 @@ public class SettingsDialogFragment extends DialogFragment {
     private boolean backToSpot;
 
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        View view = getActivity().getLayoutInflater().inflate(R.layout.settings_dialog, null);
-
-        final TextView coefficientValue = (TextView) view.findViewById(R.id.coefficientValue);
+        LayoutInflater layoutInflater=getActivity().getLayoutInflater();
+        View viewSettingsDialog =layoutInflater.inflate(R.layout.settings_dialog, null);
+        //
+        final TextView coefficientValue = (TextView) viewSettingsDialog.findViewById(R.id.coefficientValue);
         coefficientValue.setText(BalanduinoActivity.mSensorFusion.d.format(BalanduinoActivity.mSensorFusion.filter_coefficient));
-        final SeekBar mSeekBarCoefficient = (SeekBar) view.findViewById(R.id.coefficientSeekBar);
+        final SeekBar mSeekBarCoefficient = (SeekBar) viewSettingsDialog.findViewById(R.id.coefficientSeekBar);
         mSeekBarCoefficient.setProgress((int) (BalanduinoActivity.mSensorFusion.filter_coefficient * mSeekBarCoefficient.getMax()));
         mSeekBarCoefficient.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
@@ -60,15 +60,15 @@ public class SettingsDialogFragment extends DialogFragment {
         });
 
         if (SensorFusion.IMUOutputSelection != 2) { // Check if a gyro is supported if not hide SeekBar and text
-            view.findViewById(R.id.seekText).setVisibility(View.GONE);
-            view.findViewById(R.id.coefficientLayout).setVisibility(View.GONE);
+            viewSettingsDialog.findViewById(R.id.seekText).setVisibility(View.GONE);
+            viewSettingsDialog.findViewById(R.id.coefficientLayout).setVisibility(View.GONE);
             mSeekBarCoefficient.setVisibility(View.GONE);
         }
 
-        final TextView angleValue = (TextView) view.findViewById(R.id.angleValue);
+        final TextView angleValue = (TextView) viewSettingsDialog.findViewById(R.id.angleValue);
         maxAngle = BalanduinoActivity.maxAngle;
         angleValue.setText(Integer.toString(maxAngle));
-        final SeekBar mSeekBarAngle = (SeekBar) view.findViewById(R.id.angleSeekBar);
+        final SeekBar mSeekBarAngle = (SeekBar) viewSettingsDialog.findViewById(R.id.angleSeekBar);
         mSeekBarAngle.setProgress(maxAngle);
         mSeekBarAngle.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
@@ -83,10 +83,10 @@ public class SettingsDialogFragment extends DialogFragment {
             }
         });
 
-        final TextView turningValue = (TextView) view.findViewById(R.id.turningValue);
+        final TextView turningValue = (TextView) viewSettingsDialog.findViewById(R.id.turningValue);
         maxTurning = BalanduinoActivity.maxTurning;
         turningValue.setText(Integer.toString(maxTurning));
-        final SeekBar mSeekBarTurning = (SeekBar) view.findViewById(R.id.turningSeekBar);
+        final SeekBar mSeekBarTurning = (SeekBar) viewSettingsDialog.findViewById(R.id.turningSeekBar);
         mSeekBarTurning.setProgress(maxTurning);
         mSeekBarTurning.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromTouch) {
@@ -101,7 +101,7 @@ public class SettingsDialogFragment extends DialogFragment {
             }
         });
 
-        CheckBox mCheckBox = (CheckBox) view.findViewById(R.id.checkBox);
+        CheckBox mCheckBox = (CheckBox) viewSettingsDialog.findViewById(R.id.checkBox);
         backToSpot = BalanduinoActivity.backToSpot;
         mCheckBox.setChecked(backToSpot);
         mCheckBox.setOnClickListener(new OnClickListener() {
@@ -112,7 +112,7 @@ public class SettingsDialogFragment extends DialogFragment {
         });
 
         if (Upload.isUsbHostAvailable()) {
-            Button mUploadButton = (Button) view.findViewById(R.id.uploadButton);
+            Button mUploadButton = (Button) viewSettingsDialog.findViewById(R.id.uploadButton);
             mUploadButton.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -121,9 +121,9 @@ public class SettingsDialogFragment extends DialogFragment {
                 }
             });
         } else
-            view.findViewById(R.id.uploadFirmware).setVisibility(View.GONE);
+            viewSettingsDialog.findViewById(R.id.uploadFirmware).setVisibility(View.GONE);
 
-        Button mRestoreButton = (Button) view.findViewById(R.id.restoreButton);
+        Button mRestoreButton = (Button) viewSettingsDialog.findViewById(R.id.restoreButton);
         mRestoreButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -137,7 +137,7 @@ public class SettingsDialogFragment extends DialogFragment {
             }
         });
 
-        Button mPairButtonWii = (Button) view.findViewById(R.id.pairButtonWii);
+        Button mPairButtonWii = (Button) viewSettingsDialog.findViewById(R.id.pairButtonWii);
         mPairButtonWii.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -150,7 +150,7 @@ public class SettingsDialogFragment extends DialogFragment {
             }
         });
 
-        Button mPairButtonPS4 = (Button) view.findViewById(R.id.pairButtonPS4);
+        Button mPairButtonPS4 = (Button) viewSettingsDialog.findViewById(R.id.pairButtonPS4);
         mPairButtonPS4.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -201,7 +201,7 @@ public class SettingsDialogFragment extends DialogFragment {
                     }
                 })
                 // Set custom view
-                .setView(view);
+                .setView(viewSettingsDialog);
         // Create the AlertDialog
         return builder.create();
     }
