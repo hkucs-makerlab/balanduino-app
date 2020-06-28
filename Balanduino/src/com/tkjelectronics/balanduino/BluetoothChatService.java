@@ -282,6 +282,7 @@ public class BluetoothChatService {
      * fails.
      */
     private class ConnectThread extends Thread {
+        private static final String TAG = "ConnectThread";
         private final BluetoothSocket mmSocket;
         private final BluetoothDevice mmDevice;
         private String mSocketType;
@@ -298,6 +299,8 @@ public class BluetoothChatService {
                     tmp = mmDevice.createRfcommSocketToServiceRecord(UUID_RFCOMM_GENERIC);
                 else
                     tmp = mmDevice.createInsecureRfcommSocketToServiceRecord(UUID_RFCOMM_GENERIC);
+                if (D)
+                    Log.e(TAG, "Socket Type: " + mSocketType + "created!");
             } catch (IOException e) {
                 if (D)
                     Log.e(TAG, "Socket Type: " + mSocketType + "create() failed", e);
@@ -358,6 +361,7 @@ public class BluetoothChatService {
      * incoming and outgoing transmissions.
      */
     private class ConnectedThread extends Thread {
+        private static final String TAG = "ConnectedThread";
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
@@ -466,6 +470,7 @@ public class BluetoothChatService {
 
         /**
          * Write to the connected OutStream.
+         *
          * @param buffer The bytes to write
          */
         public void write(byte[] buffer) {
