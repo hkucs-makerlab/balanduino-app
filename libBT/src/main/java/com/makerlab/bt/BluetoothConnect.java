@@ -11,6 +11,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.ParcelUuid;
 import android.util.Log;
@@ -35,9 +36,11 @@ public class BluetoothConnect implements Serializable {
     private Activity mActivity;
     //
     private int mPrevChecksum = -1;
+    private DisonnectedState mDisonnectedState;
     private ConnectionHandler mConnectionHandler;
     private boolean mIsConnected = false;
     private BluetoothConnect self;
+
 
     public BluetoothConnect(Activity activity) {
         mActivity = activity;
@@ -51,11 +54,20 @@ public class BluetoothConnect implements Serializable {
     public void connectBluetooth(BluetoothDevice bluetoothDevice) {
         if (isConnected()) return;
         this.mBluetoothDevice = bluetoothDevice;
+        connectBluetooth();
+    }
+
+    public void connectBluetooth() {
         BtSocketConnectAsyncTask btSocketConnectAsyncTask = new BtSocketConnectAsyncTask(mActivity, mBluetoothDevice);
         btSocketConnectAsyncTask.execute();
     }
 
     public void disconnectBluetooth() {
+        if (mDisonnectedState != null) {
+            mActivity.unregisterReceiver(mDisonnectedState);
+            mDisonnectedState = null;
+        }
+
         if (mBluetoothGatt != null) {
             mBluetoothGatt.close();
         }
@@ -88,8 +100,29 @@ public class BluetoothConnect implements Serializable {
         return addr;
     }
 
+    public String getDeviceName() {
+        String name = null;
+        if (mBluetoothDevice != null) {
+            name = mBluetoothDevice.getName();
+        }
+        return name;
+    }
+
+
     public boolean isConnected() {
         return mIsConnected;
+    }
+
+    public int available() {
+        return 0;
+    }
+
+    public int read(byte[] buffer) {
+        return 0;
+    }
+
+    public boolean write(String buffer) {
+        return send(buffer.getBytes());
     }
 
     public boolean send(byte[] payload) {
@@ -218,6 +251,11 @@ public class BluetoothConnect implements Serializable {
                 mBluetoothSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(SPPuuid);
                 mBluetoothSocket.connect();
                 mOutputStream = mBluetoothSocket.getOutputStream();
+                IntentFilter f2 = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+                IntentFilter f1 = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+                mDisonnectedState = new DisonnectedState();
+                mActivity.registerReceiver(mDisonnectedState, f1);
+                mActivity.registerReceiver(mDisonnectedState, f2);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "connectClassicBlueTooth(): " + e.toString());
                 //e.printStackTrace();
@@ -247,21 +285,9 @@ public class BluetoothConnect implements Serializable {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             super.onServicesDiscovered(gatt, status);
-
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 bindServiceAndCharacteristics(gatt);
                 Log.e(LOG_TAG, "onServicesDiscovered()");
-
-/*                for (BluetoothGattService gattService : gatt.getServices()) {
-                    Log.e("onServicesDiscovered", "Service: " + gattService.getUuid());
-                    for (BluetoothGattCharacteristic characteristic : gattService.getCharacteristics()) {
-                        Log.e("onServicesDiscovered", "Characteristic: " + characteristic.getUuid());
-                        for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors()) {
-                            Log.e("onServicesDiscovered", "descriptor: " + descriptor.getValue().toString());
-                        }
-                    }
-                }
- */
             }
         }
 
@@ -312,6 +338,13 @@ public class BluetoothConnect implements Serializable {
             //
             mBluetoothGatt = gatt;
             mIsConnected = true;
+            //
+            IntentFilter f2 = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+            IntentFilter f1 = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+            mDisonnectedState = new DisonnectedState();
+            mActivity.registerReceiver(mDisonnectedState, f1);
+            mActivity.registerReceiver(mDisonnectedState, f2);
+            //
             if (mConnectionHandler != null) {
                 mConnectionHandler.onConnectionSuccess(self);
             }

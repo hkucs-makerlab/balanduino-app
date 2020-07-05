@@ -16,7 +16,6 @@
 
 package com.tkjelectronics.balanduino;
 
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Bundle;
@@ -24,9 +23,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.makerlab.bt.BluetoothConnect;
 import java.util.UUID;
 
 /**
@@ -43,9 +40,9 @@ public class BluetoothChatService {
     private static final UUID UUID_RFCOMM_GENERIC = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     // Member fields
-    private final BluetoothAdapter mAdapter;
+    private BluetoothConnect mBluetoothConnect;
     private final Handler mHandler;
-    private ConnectThread mConnectThread;
+    //private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
 
@@ -55,20 +52,21 @@ public class BluetoothChatService {
     public static final int STATE_CONNECTED = 2; // now connected to a remote device
 
     private boolean stopReading; // This is used to stop it from reading on the inputStream
-    public boolean newConnection; // Prevent it from calling connectionFailed() if it trying to start a new connection
+    //public boolean newConnection; // Prevent it from calling connectionFailed() if it trying to start a new connection
 
-    private static final int MAX_RETRIES = 100; // I know this might seem way too high! But it seems to work pretty well
-    public int nRetries = 0;
+    //private static final int MAX_RETRIES = 100; // I know this might seem way too high! But it seems to work pretty well
+    //public int nRetries = 0;
 
     /**
      * Constructor. Prepares a new BluetoothChat session.
      *
      * @param handler A Handler to send messages back to the UI Activity
      */
-    public BluetoothChatService(Handler handler, BluetoothAdapter mBluetoothAdapter) {
-        mAdapter = mBluetoothAdapter;
-        mState = STATE_NONE;
+    public BluetoothChatService(Handler handler, BluetoothConnect conn) {
+        mBluetoothConnect = conn;
+        //mState = STATE_CONNECTED;
         mHandler = handler;
+        connected();
     }
 
     /**
@@ -76,6 +74,7 @@ public class BluetoothChatService {
      *
      * @param state An integer defining the current connection state
      */
+
     private synchronized void setState(int state) {
         if (D)
             Log.d(TAG, "setState() " + mState + " -> " + state);
@@ -103,10 +102,10 @@ public class BluetoothChatService {
         stopReading = true;
 
         // Cancel any thread attempting to make a connection
-        if (mConnectThread != null) {
+/*        if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
-        }
+        }*/
 
         // Cancel any thread currently running a connection
         if (mConnectedThread != null) {
@@ -117,12 +116,17 @@ public class BluetoothChatService {
         //setState(STATE_NONE);
     }
 
+    public synchronized void connect() {
+        mBluetoothConnect.connectBluetooth();
+    }
+
     /**
      * Start the ConnectThread to initiate a connection to a remote device.
      *
      * @param device The BluetoothDevice to connect
      * @param secure Socket Security type - Secure (true) , Insecure (false)
      */
+    /*
     public synchronized void connect(BluetoothDevice device, boolean secure) {
         if (D)
             Log.d(TAG, "connect to: " + device);
@@ -144,25 +148,28 @@ public class BluetoothChatService {
         // Start the thread to connect with the given device
         mConnectThread = new ConnectThread(device, secure);
         mConnectThread.start();
+
         setState(STATE_CONNECTING);
     }
-
+    */
     /**
      * Start the ConnectedThread to begin managing a Bluetooth connection
      *
-     * @param socket The BluetoothSocket on which the connection was made
-     * @param device The BluetoothDevice that has been connected
+
      */
+    /*
     public synchronized void connected(BluetoothSocket socket,
                                        BluetoothDevice device, final String socketType) {
         if (D)
             Log.d(TAG, "connected, Socket Type: " + socketType);
 
         // Cancel the thread that completed the connection
-        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
-        }
+
+//        if (mConnectThread != null) {
+//            mConnectThread.cancel();
+//            mConnectThread = null;
+//        }
+
 
         // Cancel any thread currently running a connection
         if (mConnectedThread != null) {
@@ -171,7 +178,7 @@ public class BluetoothChatService {
         }
 
         // Start the thread to manage the connection and perform transmissions
-        mConnectedThread = new ConnectedThread(socket, socketType);
+        mConnectedThread = new ConnectedThread();
         mConnectedThread.start();
 
         // Send the name of the connected device back to the UI Activity
@@ -183,7 +190,21 @@ public class BluetoothChatService {
 
         setState(STATE_CONNECTED);
     }
+    */
+    public synchronized void connected() {
+        // Start the thread to manage the connection and perform transmissions
+        mConnectedThread = new ConnectedThread();
+        mConnectedThread.start();
 
+        // Send the name of the connected device back to the UI Activity
+        Message msg = mHandler.obtainMessage(BalanduinoActivity.MESSAGE_DEVICE_NAME);
+        Bundle bundle = new Bundle();
+        bundle.putString(BalanduinoActivity.DEVICE_NAME, mBluetoothConnect.getDeviceName());
+        msg.setData(bundle);
+        mHandler.sendMessage(msg);
+
+        setState(STATE_CONNECTED);
+    }
     /**
      * Stop all threads
      */
@@ -191,17 +212,18 @@ public class BluetoothChatService {
         if (D)
             Log.d(TAG, "stop");
         stopReading = true;
-        if (mConnectThread != null) {
+/*        if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
-        }
+        }*/
         if (mConnectedThread != null) {
             mConnectedThread.cancel();
             mConnectedThread = null;
         }
-        if (mState == STATE_CONNECTED)
-            disconnectSuccess();
+        //if (mState == STATE_CONNECTED)
+        //disconnectSuccess();
         setState(STATE_NONE);
+
     }
 
     /**
@@ -210,26 +232,28 @@ public class BluetoothChatService {
      * @param out The bytes to write
      * @see ConnectedThread#write(byte[])
      */
-    public void write(byte[] out) {
+    public synchronized void write(byte[] out) {
         // Create temporary object
-        ConnectedThread r;
+        //ConnectedThread r;
         // Synchronize a copy of the ConnectedThread
-        synchronized (this) {
+/*        synchronized (this) {
             if (mState != STATE_CONNECTED)
                 return;
             r = mConnectedThread;
-        }
+        }*/
         // Perform the write unsynchronized
-        r.write(out);
+        //r.write(out);
+        mBluetoothConnect.send(out);
     }
 
-    public void write(String string) {
+    public synchronized void write(String string) {
         write(string.getBytes());
     }
 
     /**
      * Indicate that the connection attempt failed and notify the UI Activity.
      */
+    /*
     private void connectionFailed() {
         Message msg;
         if (nRetries < MAX_RETRIES) { // There is a bug in the Android core, so we need to connect twice for it to work all every time
@@ -245,13 +269,14 @@ public class BluetoothChatService {
         }
         if (!newConnection) {
             mHandler.sendMessage(msg); // Send message
-            BluetoothChatService.this.start(); // Start the service over to restart listening mode
+            BluetoothChatService2.this.start(); // Start the service over to restart listening mode
         }
     }
-
+    */
     /**
      * Indicate that the connection was lost and notify the UI Activity.
      */
+    /*
     private void connectionLost() { // Send a failure message back to the Activity
         setState(STATE_NONE);
         Message msg = mHandler.obtainMessage(BalanduinoActivity.MESSAGE_DISCONNECTED);
@@ -261,9 +286,10 @@ public class BluetoothChatService {
         mHandler.sendMessage(msg);
 
         // Start the service over to restart listening mode
-        BluetoothChatService.this.start();
+        BluetoothChatService2.this.start();
     }
-
+    */
+    /*
     private void disconnectSuccess() {
         // Send a success message back to the Activity
         Message msg = mHandler.obtainMessage(BalanduinoActivity.MESSAGE_DISCONNECTED);
@@ -273,14 +299,15 @@ public class BluetoothChatService {
         mHandler.sendMessage(msg);
 
         // Start the service over to restart listening mode
-        BluetoothChatService.this.start();
+        BluetoothChatService2.this.start();
     }
-
+    */
     /**
      * This thread runs while attempting to make an outgoing connection with a
      * device. It runs straight through; the connection either succeeds or
      * fails.
      */
+    /*
     private class ConnectThread extends Thread {
         private static final String TAG = "ConnectThread";
         private final BluetoothSocket mmSocket;
@@ -337,7 +364,7 @@ public class BluetoothChatService {
             }
 
             // Reset the ConnectThread because we're done
-            synchronized (BluetoothChatService.this) {
+            synchronized (BluetoothChatService2.this) {
                 mConnectThread = null;
             }
 
@@ -356,17 +383,22 @@ public class BluetoothChatService {
         }
     }
 
+     */
+
     /**
      * This thread runs during a connection with a remote device. It handles all
      * incoming and outgoing transmissions.
      */
     private class ConnectedThread extends Thread {
         private static final String TAG = "ConnectedThread";
+/*
         private final BluetoothSocket mmSocket;
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
+*/
 
-        public ConnectedThread(BluetoothSocket socket, String socketType) {
+        public ConnectedThread() {
+            /*
             if (D)
                 Log.d(TAG, "create ConnectedThread: " + socketType);
             mmSocket = socket;
@@ -385,6 +417,8 @@ public class BluetoothChatService {
             mmInStream = tmpIn;
             mmOutStream = tmpOut;
             stopReading = false;
+
+             */
         }
 
         public void run() {
@@ -395,76 +429,68 @@ public class BluetoothChatService {
 
             // Keep listening to the InputStream while connected
             while (!stopReading) {
-                try {
-                    if (mmInStream.available() > 0) { // Check if new data is available
-                        bytes = mmInStream.read(buffer); // Read from the InputStream
 
-                        String readMessage = new String(buffer, 0, bytes);
-                        String[] splitMessage = readMessage.split(",");
+                if (mBluetoothConnect.available() > 0) { // Check if new data is available
+                    bytes = mBluetoothConnect.read(buffer); // Read from the InputStream
 
-                        if (D) {
-                            Log.i(TAG, "Received string: " + readMessage);
-                            for (int i = 0; i < splitMessage.length; i++)
-                                Log.i(TAG, "splitMessage[" + i + "]: " + splitMessage[i]);
-                        }
+                    String readMessage = new String(buffer, 0, bytes);
+                    String[] splitMessage = readMessage.split(",");
 
+                    if (D) {
+                        Log.i(TAG, "Received string: " + readMessage);
                         for (int i = 0; i < splitMessage.length; i++)
-                            splitMessage[i] = splitMessage[i].trim(); // Trim message
-
-                        if (splitMessage[0].equals(BalanduinoActivity.responsePIDValues) && splitMessage.length == BalanduinoActivity.responsePIDValuesLength) {
-                            BalanduinoActivity.pValue = splitMessage[1];
-                            BalanduinoActivity.iValue = splitMessage[2];
-                            BalanduinoActivity.dValue = splitMessage[3];
-                            BalanduinoActivity.targetAngleValue = splitMessage[4];
-                            BalanduinoActivity.newPIDValues = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responseSettings) && splitMessage.length == BalanduinoActivity.responseSettingsLength) {
-                            BalanduinoActivity.backToSpot = splitMessage[1].equals("1");
-                            BalanduinoActivity.maxAngle = Integer.parseInt(splitMessage[2]);
-                            BalanduinoActivity.maxTurning = Integer.parseInt(splitMessage[3]);
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responseInfo) && splitMessage.length == BalanduinoActivity.responseInfoLength) {
-                            BalanduinoActivity.firmwareVersion = splitMessage[1];
-                            BalanduinoActivity.eepromVersion = splitMessage[2];
-                            BalanduinoActivity.mcu = splitMessage[3];
-                            BalanduinoActivity.newInfo = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responseStatus) && splitMessage.length == BalanduinoActivity.responseStatusLength) {
-                            BalanduinoActivity.batteryLevel = splitMessage[1];
-                            BalanduinoActivity.runtime = Double.parseDouble(splitMessage[2]);
-                            BalanduinoActivity.newStatus = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responseKalmanValues) && splitMessage.length == BalanduinoActivity.responseKalmanValuesLength) {
-                            BalanduinoActivity.Qangle = splitMessage[1];
-                            BalanduinoActivity.Qbias = splitMessage[2];
-                            BalanduinoActivity.Rmeasure = splitMessage[3];
-                            BalanduinoActivity.newKalmanValues = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responseIMU) && splitMessage.length == BalanduinoActivity.responseIMULength) {
-                            BalanduinoActivity.accValue = splitMessage[1];
-                            BalanduinoActivity.gyroValue = splitMessage[2];
-                            BalanduinoActivity.kalmanValue = splitMessage[3];
-                            BalanduinoActivity.newIMUValues = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        } else if (splitMessage[0].equals(BalanduinoActivity.responsePairConfirmation) && splitMessage.length == BalanduinoActivity.responsePairConfirmationLength) {
-                            BalanduinoActivity.pairingWithDevice = true;
-
-                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-                        }
+                            Log.i(TAG, "splitMessage[" + i + "]: " + splitMessage[i]);
                     }
-                } catch (IOException e) {
-                    if (D)
-                        Log.e(TAG, "disconnected", e);
-                    if (!stopReading) {
-                        cancel();
-                        connectionLost();
+
+                    for (int i = 0; i < splitMessage.length; i++)
+                        splitMessage[i] = splitMessage[i].trim(); // Trim message
+
+                    if (splitMessage[0].equals(BalanduinoActivity.responsePIDValues) && splitMessage.length == BalanduinoActivity.responsePIDValuesLength) {
+                        BalanduinoActivity.pValue = splitMessage[1];
+                        BalanduinoActivity.iValue = splitMessage[2];
+                        BalanduinoActivity.dValue = splitMessage[3];
+                        BalanduinoActivity.targetAngleValue = splitMessage[4];
+                        BalanduinoActivity.newPIDValues = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responseSettings) && splitMessage.length == BalanduinoActivity.responseSettingsLength) {
+                        BalanduinoActivity.backToSpot = splitMessage[1].equals("1");
+                        BalanduinoActivity.maxAngle = Integer.parseInt(splitMessage[2]);
+                        BalanduinoActivity.maxTurning = Integer.parseInt(splitMessage[3]);
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responseInfo) && splitMessage.length == BalanduinoActivity.responseInfoLength) {
+                        BalanduinoActivity.firmwareVersion = splitMessage[1];
+                        BalanduinoActivity.eepromVersion = splitMessage[2];
+                        BalanduinoActivity.mcu = splitMessage[3];
+                        BalanduinoActivity.newInfo = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responseStatus) && splitMessage.length == BalanduinoActivity.responseStatusLength) {
+                        BalanduinoActivity.batteryLevel = splitMessage[1];
+                        BalanduinoActivity.runtime = Double.parseDouble(splitMessage[2]);
+                        BalanduinoActivity.newStatus = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responseKalmanValues) && splitMessage.length == BalanduinoActivity.responseKalmanValuesLength) {
+                        BalanduinoActivity.Qangle = splitMessage[1];
+                        BalanduinoActivity.Qbias = splitMessage[2];
+                        BalanduinoActivity.Rmeasure = splitMessage[3];
+                        BalanduinoActivity.newKalmanValues = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responseIMU) && splitMessage.length == BalanduinoActivity.responseIMULength) {
+                        BalanduinoActivity.accValue = splitMessage[1];
+                        BalanduinoActivity.gyroValue = splitMessage[2];
+                        BalanduinoActivity.kalmanValue = splitMessage[3];
+                        BalanduinoActivity.newIMUValues = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                    } else if (splitMessage[0].equals(BalanduinoActivity.responsePairConfirmation) && splitMessage.length == BalanduinoActivity.responsePairConfirmationLength) {
+                        BalanduinoActivity.pairingWithDevice = true;
+
+                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
                     }
-                    return;
                 }
+
             }
         }
 
@@ -474,17 +500,18 @@ public class BluetoothChatService {
          * @param buffer The bytes to write
          */
         public void write(byte[] buffer) {
-            try {
+            mBluetoothConnect.send(buffer);
+/*            try {
                 mmOutStream.write(buffer);
             } catch (IOException e) {
                 if (D)
                     Log.e(TAG, "Exception during write", e);
-            }
+            }*/
         }
 
         public void cancel() {
             stopReading = true;
-
+/*
             if (mmInStream != null) {
                 try {
                     mmInStream.close();
@@ -502,7 +529,7 @@ public class BluetoothChatService {
                     mmSocket.close();
                 } catch (Exception ignored) {
                 }
-            }
+            }*/
         }
     }
 }

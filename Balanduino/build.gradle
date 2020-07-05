@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId "com.makerlab.balanduino"
-        minSdkVersion 15
+        minSdkVersion 21
         targetSdkVersion 28
         versionName = project.versionName
     }
@@ -37,12 +37,10 @@ android {
     productFlavors {
         basic {
             dimension "version"
-            minSdkVersion 14
             versionCode = Integer.parseInt('1000' + project.versionCode)
         }
         usb {
             dimension "version"
-            minSdkVersion 14
             versionCode = Integer.parseInt('1200' + project.versionCode)
         }
     }
@@ -87,6 +85,7 @@ dependencies {
     implementation project(path: ':GraphView')
     usbImplementation project(path: ':PhysicaloidLibrary')
     implementation 'com.android.support:design:28.0.0'
+    implementation project(path: ':libBT')
 
 }
 
