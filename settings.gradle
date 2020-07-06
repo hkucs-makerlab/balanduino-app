@@ -1,2 +1,2 @@
 include ':Balanduino', ':GraphView', ':PhysicaloidLibrary', ':libBT'
-//rootProject.name=' '
+rootProject.name='BalanDuino '
