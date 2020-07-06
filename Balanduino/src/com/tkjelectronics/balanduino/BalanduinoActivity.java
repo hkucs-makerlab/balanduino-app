@@ -150,6 +150,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
     private BluetoothScan mBluetoothScan;
     //
     private MenuItem menuItemConnect;
+
     // Check the tab to the left as well in landscape mode
     public static boolean checkTab(int tab) {
         return (currentTabSelected == tab ||
@@ -213,7 +214,10 @@ public class BalanduinoActivity extends AppCompatActivity implements
         mBluetoothConnect = new BluetoothConnect(this);
         mBluetoothConnect.setConnectionHandler(this);
         mBluetoothScan = new BluetoothScan(this);
-
+        //
+        mBluetoothHandler = new BluetoothHandler(this);
+        mChatService = new BluetoothChatService(mBluetoothHandler, mBluetoothConnect);
+        //
         // get sensorManager and initialize sensor listeners
         SensorManager mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         mSensorFusion = new SensorFusion(getApplicationContext(), mSensorManager);
@@ -245,7 +249,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
             if (mPackageManager != null) {
                 BalanduinoActivity.appVersion = mPackageManager.getPackageInfo(getPackageName(), 0).versionName; // Read the app version name
                 if (D)
-                    Log.d(LOG_TAG, "onCreate() : app version "+appVersion);
+                    Log.d(LOG_TAG, "onCreate() : app version " + appVersion);
             }
         } catch (NameNotFoundException e) {
             e.printStackTrace();
@@ -324,8 +328,9 @@ public class BalanduinoActivity extends AppCompatActivity implements
         if (mSensorFusion != null) {
             mSensorFusion.unregisterListeners();
         }
-        mChatService.stop();
-        mBluetoothConnect.disconnectBluetooth();
+        if (mChatService != null) {
+            mChatService.stop();
+        }
     }
 
     @Override
@@ -341,7 +346,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
                 mChatService.write(sendStop + imuStop + statusStop);
         }*/
 
-        if (mBluetoothConnect.isConnected()) {
+        if (mChatService != null) {
             mChatService.write(sendStop + imuStop + statusStop);
         }
     }
@@ -354,15 +359,16 @@ public class BalanduinoActivity extends AppCompatActivity implements
         // Restore the sensor listeners when user resumes the application.
         mSensorFusion.initListeners();
     }
-/*
-    private void setupBTService() {
-        if (mChatService != null)
-            return;
-        if (D)
-            Log.d(LOG_TAG, "setupBTService()");
 
-    }
-*/
+    /*
+        private void setupBTService() {
+            if (mChatService != null)
+                return;
+            if (D)
+                Log.d(LOG_TAG, "setupBTService()");
+
+        }
+    */
     // TabLayout.OnTabSelectedListener
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
@@ -439,7 +445,12 @@ public class BalanduinoActivity extends AppCompatActivity implements
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (D)
             Log.d(LOG_TAG, "onPrepareOptionsMenu");
-        menuItemConnect= menu.findItem(R.id.menu_connect); // Find item
+        menuItemConnect = menu.findItem(R.id.menu_connect); // Find item
+        if(mBluetoothConnect.isConnected()){
+            menuItemConnect.setIcon(R.drawable.device_access_bluetooth_connected);
+        } else {
+            menuItemConnect.setIcon(R.drawable.device_access_bluetooth);
+        }
         return true;
     }
 
@@ -457,8 +468,14 @@ public class BalanduinoActivity extends AppCompatActivity implements
         switch (item.getItemId()) {
             case R.id.menu_connect:
                 // Launch the DeviceListActivity to see devices and do scan
+                /*
                 if (mBluetoothConnect.isConnected()) {
                     mBluetoothConnect.disconnectBluetooth();
+                    return true;
+                }
+                 */
+                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                    mChatService.stop();
                     menuItemConnect.setIcon(R.drawable.device_access_bluetooth);
                     return true;
                 }
@@ -473,7 +490,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
             case R.id.menu_settings:
                 // Open up the settings dialog
                 SettingsDialogFragment dialogFragment = new SettingsDialogFragment();
-                dialogFragment.show(getSupportFragmentManager(),"setting dialog");
+                dialogFragment.show(getSupportFragmentManager(), "setting dialog");
                 return true;
 /*            case android.R.id.home:
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://balanduino.net/"));
@@ -516,32 +533,33 @@ public class BalanduinoActivity extends AppCompatActivity implements
                  */
         }
     }
-/*
-    private void connectDevice(Intent data, boolean retry) {
-        if (retry) {
-            if (mBtDevice != null && !stopRetrying) {
+
+    /*
+        private void connectDevice(Intent data, boolean retry) {
+            if (retry) {
+                if (mBtDevice != null && !stopRetrying) {
+                    mChatService.start(); // This will stop all the running threads
+                    mChatService.connect(mBtDevice, mBtSecure); // Attempt to connect to the device
+                }
+            } else { // It's a new connection
+                stopRetrying = false;
+                mChatService.newConnection = true;
                 mChatService.start(); // This will stop all the running threads
+                if (data.getExtras() == null)
+                    return;
+                // Get the device Bluetooth address
+                String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+                // If it's a new device we will pair with the device
+                mBtSecure = data.getExtras().getBoolean(DeviceListActivity.EXTRA_NEW_DEVICE);
+                // Get the BluetoothDevice object
+                mBtDevice = mBluetoothAdapter.getRemoteDevice(address);
+                //
+                mChatService.nRetries = 0; // Reset retry counter
                 mChatService.connect(mBtDevice, mBtSecure); // Attempt to connect to the device
+                showToast(getString(R.string.connecting), Toast.LENGTH_SHORT);
             }
-        } else { // It's a new connection
-            stopRetrying = false;
-            mChatService.newConnection = true;
-            mChatService.start(); // This will stop all the running threads
-            if (data.getExtras() == null)
-                return;
-            // Get the device Bluetooth address
-            String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-            // If it's a new device we will pair with the device
-            mBtSecure = data.getExtras().getBoolean(DeviceListActivity.EXTRA_NEW_DEVICE);
-            // Get the BluetoothDevice object
-            mBtDevice = mBluetoothAdapter.getRemoteDevice(address);
-            //
-            mChatService.nRetries = 0; // Reset retry counter
-            mChatService.connect(mBtDevice, mBtSecure); // Attempt to connect to the device
-            showToast(getString(R.string.connecting), Toast.LENGTH_SHORT);
         }
-    }
-*/
+    */
     @Override
     public void onConnect(BluetoothConnect self) {
         runOnUiThread(new Thread() {
@@ -554,15 +572,15 @@ public class BalanduinoActivity extends AppCompatActivity implements
 
     @Override
     public void onConnectionSuccess(BluetoothConnect self) {
+        if (D)
+            Log.e(LOG_TAG, "onConnectionSuccess() :");
+
         runOnUiThread(new Thread() {
             public void run() {
-                menuItemConnect.setIcon(R.drawable.device_access_bluetooth_connected);
                 Toast.makeText(getApplicationContext(), "Connected", Toast.LENGTH_SHORT).show();
             }
         });
-        if (mBluetoothHandler == null)
-            mBluetoothHandler = new BluetoothHandler(this);
-        mChatService = new BluetoothChatService(mBluetoothHandler,mBluetoothConnect);
+        mChatService.connected();
     }
 
     @Override
@@ -578,6 +596,9 @@ public class BalanduinoActivity extends AppCompatActivity implements
 
     @Override
     public void onDisconnected(BluetoothConnect self) {
+        if (mChatService != null) {
+            mChatService.stop();
+        }
         runOnUiThread(new Thread() {
             public void run() {
                 menuItemConnect.setIcon(R.drawable.device_access_bluetooth);
@@ -738,8 +759,10 @@ public class BalanduinoActivity extends AppCompatActivity implements
                                 }, 1000); // Wait 1 second before sending the message
                             }
                             break;
+                            /*
                         case BluetoothChatService.STATE_CONNECTING:
                             break;
+                             */
                     }
                     PIDFragment.updateButton();
                     break;
@@ -780,8 +803,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
                 case MESSAGE_RETRY:
                     if (D)
                         Log.d(LOG_TAG, "MESSAGE_RETRY");
-                   // mBalanduinoActivity.connectDevice(null, true);
-                    mChatService.connect();
+                    // mBalanduinoActivity.connectDevice(null, true);
                     break;
             }
         }

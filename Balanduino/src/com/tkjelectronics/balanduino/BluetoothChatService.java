@@ -16,16 +16,12 @@
 
 package com.tkjelectronics.balanduino;
 
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
 import com.makerlab.bt.BluetoothConnect;
-import java.util.UUID;
-
 /**
  * This class does all the work for setting up and managing Bluetooth
  * connections with other devices. It has a thread for connecting with a device,
@@ -36,9 +32,6 @@ public class BluetoothChatService {
     private static final String TAG = "BluetoothChatService";
     private static final boolean D = BalanduinoActivity.D;
 
-    // RFCOMM/SPP UUID
-    private static final UUID UUID_RFCOMM_GENERIC = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-
     // Member fields
     private BluetoothConnect mBluetoothConnect;
     private final Handler mHandler;
@@ -48,8 +41,8 @@ public class BluetoothChatService {
 
     // Constants that indicate the current connection state
     public static final int STATE_NONE = 0; // we're doing nothing
-    public static final int STATE_CONNECTING = 1; // now initiating an outgoing connection
-    public static final int STATE_CONNECTED = 2; // now connected to a remote device
+    public static final int STATE_CONNECTED = 1; // now connected to a remote device
+    //public static final int STATE_CONNECTING = 2; // now initiating an outgoing connection
 
     private boolean stopReading; // This is used to stop it from reading on the inputStream
     //public boolean newConnection; // Prevent it from calling connectionFailed() if it trying to start a new connection
@@ -64,9 +57,8 @@ public class BluetoothChatService {
      */
     public BluetoothChatService(Handler handler, BluetoothConnect conn) {
         mBluetoothConnect = conn;
-        //mState = STATE_CONNECTED;
+        mState = STATE_NONE;
         mHandler = handler;
-        connected();
     }
 
     /**
@@ -95,17 +87,12 @@ public class BluetoothChatService {
      * Start the chat service. Specifically start AcceptThread to begin a
      * session in listening (server) mode. Called by the Activity onResume()
      */
+    /*
     public synchronized void start() {
         if (D)
             Log.d(TAG, "start");
 
         stopReading = true;
-
-        // Cancel any thread attempting to make a connection
-/*        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
-        }*/
 
         // Cancel any thread currently running a connection
         if (mConnectedThread != null) {
@@ -113,12 +100,9 @@ public class BluetoothChatService {
             mConnectedThread = null;
         }
 
-        //setState(STATE_NONE);
+        setState(STATE_NONE);
     }
-
-    public synchronized void connect() {
-        mBluetoothConnect.connectBluetooth();
-    }
+    */
 
     /**
      * Start the ConnectThread to initiate a connection to a remote device.
@@ -152,10 +136,9 @@ public class BluetoothChatService {
         setState(STATE_CONNECTING);
     }
     */
+
     /**
      * Start the ConnectedThread to begin managing a Bluetooth connection
-     *
-
      */
     /*
     public synchronized void connected(BluetoothSocket socket,
@@ -205,6 +188,7 @@ public class BluetoothChatService {
 
         setState(STATE_CONNECTED);
     }
+
     /**
      * Stop all threads
      */
@@ -223,7 +207,7 @@ public class BluetoothChatService {
         //if (mState == STATE_CONNECTED)
         //disconnectSuccess();
         setState(STATE_NONE);
-
+        mBluetoothConnect.disconnectBluetooth();
     }
 
     /**
