@@ -17,9 +17,12 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.UUID;
 
 public class BluetoothConnect implements Serializable {
@@ -32,6 +35,7 @@ public class BluetoothConnect implements Serializable {
     // classic Bluetooth SPP
     private BluetoothSocket mBluetoothSocket = null;
     private OutputStream mOutputStream;
+    private InputStream mInputStream;
 
     private Activity mActivity;
     //
@@ -40,7 +44,8 @@ public class BluetoothConnect implements Serializable {
     private ConnectionHandler mConnectionHandler;
     private boolean mIsConnected = false;
     private BluetoothConnect self;
-
+    private Queue<String> recievedPayloadQuene = new LinkedList<>();
+    private String mCommandLine = "";
 
     public BluetoothConnect(Activity activity) {
         mActivity = activity;
@@ -79,6 +84,9 @@ public class BluetoothConnect implements Serializable {
                 if (mOutputStream != null) {
                     mOutputStream.close();
                 }
+                if (mInputStream != null) {
+                    mInputStream.close();
+                }
                 mBluetoothSocket.close();
             }
         } catch (IOException e) {
@@ -86,6 +94,7 @@ public class BluetoothConnect implements Serializable {
         } finally {
             mBluetoothSocket = null;
             mOutputStream = null;
+            mInputStream = null;
         }
         //
         mPrevChecksum = -1;
@@ -114,11 +123,34 @@ public class BluetoothConnect implements Serializable {
     }
 
     public int available() {
-        return 0;
+        try {
+            // poll if we have data recevied from bluetooth spp
+            int len = 0;
+            if (mInputStream != null) {
+                len = mInputStream.available();
+                if (len > 0) {
+                    byte[] buffer = new byte[len];
+                    mInputStream.read(buffer);
+                    String tmp = new String(buffer);
+                    mCommandLine = mCommandLine + tmp;
+                    Log.e(LOG_TAG, "available(): tmp " + tmp);
+                }
+            }
+        } catch (IOException e) {
+
+        }
+        //
+        if (mCommandLine.length() > 0 && mCommandLine.indexOf(',') != -1) {
+            Log.e(LOG_TAG, "available(): mCommandLine " + mCommandLine);
+            recievedPayloadQuene.add(mCommandLine);
+            mCommandLine = "";
+        }
+        return recievedPayloadQuene.size();
     }
 
-    public int read(byte[] buffer) {
-        return 0;
+    public String read() {
+        String data = recievedPayloadQuene.poll();
+        return data;
     }
 
     public boolean write(String buffer) {
@@ -251,6 +283,7 @@ public class BluetoothConnect implements Serializable {
                 mBluetoothSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(SPPuuid);
                 mBluetoothSocket.connect();
                 mOutputStream = mBluetoothSocket.getOutputStream();
+                mInputStream = mBluetoothSocket.getInputStream();
                 IntentFilter f2 = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
                 IntentFilter f1 = new IntentFilter(BluetoothDevice.ACTION_ACL_DISCONNECTED);
                 mDisonnectedState = new DisonnectedState();
@@ -260,6 +293,7 @@ public class BluetoothConnect implements Serializable {
                 Log.e(LOG_TAG, "connectClassicBlueTooth(): " + e.toString());
                 //e.printStackTrace();
                 mOutputStream = null;
+                mInputStream = null;
                 mBluetoothSocket = null;
                 rc = false;
             }
@@ -270,6 +304,8 @@ public class BluetoothConnect implements Serializable {
 
     //
     class BluetoothGattCallback extends android.bluetooth.BluetoothGattCallback {
+        private final String LOG_TAG = BluetoothGattCallback.class.getSimpleName();
+
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
@@ -296,8 +332,10 @@ public class BluetoothConnect implements Serializable {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
             byte[] buff = characteristic.getValue();
-            //Log.e("onCharacteristicChanged", "recevied: " + buff.length);
+
             // An updated value has been received for a characteristic.
+            // Log.e(LOG_TAG, "recevied: " + buff.length);
+            recievedPayloadQuene.add(new String(buff));
         }
 
         private void bindServiceAndCharacteristics(BluetoothGatt gatt) {
