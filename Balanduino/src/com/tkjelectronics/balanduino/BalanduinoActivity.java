@@ -261,19 +261,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
         super.onStart();
         if (D)
             Log.d(LOG_TAG, "++ ON START ++");
-        // If BT is not on, request that it be enabled.
-        // setupChat() will then be called during onActivityResult
-
-/*
-        if (!mBluetoothAdapter.isEnabled()) {
-            if (D)
-                Log.d(LOG_TAG, "Request enable BT");
-            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
-        } else
-            setupBTService(); // Otherwise, setup the chat session
-*/
-
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this); // Create SharedPreferences instance
         String filterCoefficient = preferences.getString("filterCoefficient", null); // Read the stored value for filter coefficient
@@ -341,11 +328,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
         // Unregister sensor listeners to prevent the activity from draining the device's battery.
         mSensorFusion.unregisterListeners();
         // Send stop command and stop sending graph data command
-/*        if (mChatService != null) {
-            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
-                mChatService.write(sendStop + imuStop + statusStop);
-        }*/
-
         if (mChatService != null) {
             mChatService.write(sendStop + imuStop + statusStop);
         }
@@ -360,15 +342,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
         mSensorFusion.initListeners();
     }
 
-    /*
-        private void setupBTService() {
-            if (mChatService != null)
-                return;
-            if (D)
-                Log.d(LOG_TAG, "setupBTService()");
-
-        }
-    */
     // TabLayout.OnTabSelectedListener
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
@@ -534,32 +507,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
         }
     }
 
-    /*
-        private void connectDevice(Intent data, boolean retry) {
-            if (retry) {
-                if (mBtDevice != null && !stopRetrying) {
-                    mChatService.start(); // This will stop all the running threads
-                    mChatService.connect(mBtDevice, mBtSecure); // Attempt to connect to the device
-                }
-            } else { // It's a new connection
-                stopRetrying = false;
-                mChatService.newConnection = true;
-                mChatService.start(); // This will stop all the running threads
-                if (data.getExtras() == null)
-                    return;
-                // Get the device Bluetooth address
-                String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
-                // If it's a new device we will pair with the device
-                mBtSecure = data.getExtras().getBoolean(DeviceListActivity.EXTRA_NEW_DEVICE);
-                // Get the BluetoothDevice object
-                mBtDevice = mBluetoothAdapter.getRemoteDevice(address);
-                //
-                mChatService.nRetries = 0; // Reset retry counter
-                mChatService.connect(mBtDevice, mBtSecure); // Attempt to connect to the device
-                showToast(getString(R.string.connecting), Toast.LENGTH_SHORT);
-            }
-        }
-    */
     @Override
     public void onConnect(BluetoothConnect self) {
         runOnUiThread(new Thread() {
@@ -611,105 +558,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
             Log.e(LOG_TAG, "onDisconnected() :");
     }
 
-    // The Handler class that gets information back from the BluetoothChatService
-    /*
-    static class BluetoothHandler extends Handler {
-        private final BalanduinoActivity mBalanduinoActivity;
-        private String mConnectedDeviceName; // Name of the connected device
-
-        BluetoothHandler(BalanduinoActivity mBalanduinoActivity) {
-            this.mBalanduinoActivity = mBalanduinoActivity;
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case MESSAGE_STATE_CHANGE:
-                    mBalanduinoActivity.supportInvalidateOptionsMenu();
-                    if (D)
-                        Log.i(LOG_TAG, "handleMessage() : MESSAGE_STATE_CHANGE: " + msg.arg1);
-                    switch (msg.arg1) {
-                        case BluetoothChatService.STATE_CONNECTED:
-                            BalanduinoActivity.showToast(mBalanduinoActivity.getString(R.string.connected_to) + " " + mConnectedDeviceName, Toast.LENGTH_SHORT);
-                            if (mChatService == null)
-                                return;
-                            Handler mHandler = new Handler();
-                            mHandler.postDelayed(new Runnable() {
-                                public void run() {
-                                    mChatService.write(getPIDValues + getSettings + getInfo + getKalman);
-                                }
-                            }, 1000); // Wait 1 second before sending the message
-                            if (GraphFragment.mToggleButton != null) {
-                                if (GraphFragment.mToggleButton.isChecked() && checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) {
-                                    mHandler.postDelayed(new Runnable() {
-                                        public void run() {
-                                            mChatService.write(imuBegin); // Request data
-                                        }
-                                    }, 1000); // Wait 1 second before sending the message
-                                } else {
-                                    mHandler.postDelayed(new Runnable() {
-                                        public void run() {
-                                            mChatService.write(imuStop); // Stop sending data
-                                        }
-                                    }, 1000); // Wait 1 second before sending the message
-                                }
-                            }
-                            if (checkTab(ViewPagerAdapter.INFO_FRAGMENT)) {
-                                mHandler.postDelayed(new Runnable() {
-                                    public void run() {
-                                        mChatService.write(statusBegin); // Request data
-                                    }
-                                }, 1000); // Wait 1 second before sending the message
-                            }
-                            break;
-                        case BluetoothChatService.STATE_CONNECTING:
-                            break;
-                    }
-                    PIDFragment.updateButton();
-                    break;
-                case MESSAGE_READ:
-                    if (newPIDValues) {
-                        newPIDValues = false;
-                        PIDFragment.updateView();
-                    }
-                    if (newInfo || newStatus) {
-                        newInfo = false;
-                        newStatus = false;
-                        InfoFragment.updateView();
-                    }
-                    if (newIMUValues) {
-                        newIMUValues = false;
-                        GraphFragment.updateIMUValues();
-                    }
-                    if (newKalmanValues) {
-                        newKalmanValues = false;
-                        GraphFragment.updateKalmanValues();
-                    }
-                    if (pairingWithDevice) {
-                        pairingWithDevice = false;
-                        BalanduinoActivity.showToast("Now enable discovery of your device", Toast.LENGTH_LONG);
-                    }
-                    break;
-                case MESSAGE_DEVICE_NAME:
-                    // Save the connected device's name
-                    if (msg.getData() != null)
-                        mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
-                    break;
-                case MESSAGE_DISCONNECTED:
-                    mBalanduinoActivity.supportInvalidateOptionsMenu();
-                    PIDFragment.updateButton();
-                    if (msg.getData() != null)
-                        BalanduinoActivity.showToast(msg.getData().getString(TOAST), Toast.LENGTH_SHORT);
-                    break;
-                case MESSAGE_RETRY:
-                    if (D)
-                        Log.d(LOG_TAG, "MESSAGE_RETRY");
-                    mBalanduinoActivity.connectDevice(null, true);
-                    break;
-            }
-        }
-    }
-    */
     static class BluetoothHandler extends Handler {
         private final BalanduinoActivity mBalanduinoActivity;
         private String mConnectedDeviceName; // Name of the connected device
