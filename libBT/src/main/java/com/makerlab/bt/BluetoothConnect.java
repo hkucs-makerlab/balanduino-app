@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -149,7 +150,12 @@ public class BluetoothConnect implements Serializable {
     }
 
     public String read() {
-        String data = recievedPayloadQuene.poll();
+        String data ="";
+        try {
+            data = recievedPayloadQuene.poll();
+        } catch(NoSuchElementException e) {
+
+        }
         return data;
     }
 
