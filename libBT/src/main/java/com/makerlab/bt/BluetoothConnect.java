@@ -61,9 +61,12 @@ public class BluetoothConnect implements Serializable {
         if (isConnected()) return;
         this.mBluetoothDevice = bluetoothDevice;
         connectBluetooth();
+
     }
 
     public void connectBluetooth() {
+        recievedPayloadQuene.clear();
+        mCommandLine = "";
         BtSocketConnectAsyncTask btSocketConnectAsyncTask = new BtSocketConnectAsyncTask(mActivity, mBluetoothDevice);
         btSocketConnectAsyncTask.execute();
     }
@@ -124,37 +127,37 @@ public class BluetoothConnect implements Serializable {
     }
 
     public int available() {
-        try {
-            // poll if we have data recevied from bluetooth spp
-            int len = 0;
-            if (mInputStream != null) {
+        if (mInputStream != null) {  // poll if we have data recevied from bluetooth spp
+            try {
+                int len = 0;
+
                 len = mInputStream.available();
                 if (len > 0) {
                     byte[] buffer = new byte[len];
                     mInputStream.read(buffer);
                     String tmp = new String(buffer);
                     mCommandLine = mCommandLine + tmp;
-                    Log.e(LOG_TAG, "available(): tmp " + tmp);
+                    //Log.e(LOG_TAG, "available(): tmp " + tmp);
                 }
-            }
-        } catch (IOException e) {
 
-        }
-        //
-        if (mCommandLine.length() > 0 && mCommandLine.indexOf(',') != -1) {
-            Log.e(LOG_TAG, "available(): mCommandLine " + mCommandLine);
-            recievedPayloadQuene.add(mCommandLine);
-            mCommandLine = "";
+            } catch (IOException e) {
+
+            }
+            if (mCommandLine.contains("\n")) {
+                //Log.e(LOG_TAG, "available(): mCommandLine " + mCommandLine);
+                recievedPayloadQuene.add(mCommandLine);
+                mCommandLine = "";
+            }
         }
         return recievedPayloadQuene.size();
     }
 
     public String read() {
-        String data ="";
+        String data = "";
         try {
             data = recievedPayloadQuene.poll();
-        } catch(NoSuchElementException e) {
-
+        } catch (NoSuchElementException e) {
+            data = "";
         }
         return data;
     }
@@ -337,11 +340,14 @@ public class BluetoothConnect implements Serializable {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
-            byte[] buff = characteristic.getValue();
-
             // An updated value has been received for a characteristic.
-            // Log.e(LOG_TAG, "recevied: " + buff.length);
-            recievedPayloadQuene.add(new String(buff));
+            String tmp = new String(characteristic.getValue());
+            mCommandLine = mCommandLine + tmp;
+            if (mCommandLine.contains("\n")) {
+                //Log.e(LOG_TAG, "onCharacteristicChanged(): mCommandLine is [" + mCommandLine + "] " + mCommandLine.length());
+                recievedPayloadQuene.add(mCommandLine);
+                mCommandLine = "";
+            }
         }
 
         private void bindServiceAndCharacteristics(BluetoothGatt gatt) {
