@@ -27,10 +27,14 @@
             android:text="@string/graph_tab" />
 
         <android.support.design.widget.TabItem
-            android:id="@+id/tabItem"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/pid_info_tab" />
+            android:text="@string/pid_tab" />
+
+        <android.support.design.widget.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/info_tab" />
     </android.support.design.widget.TabLayout>
 
     <com.tkjelectronics.balanduino.CustomViewPager
