@@ -155,9 +155,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_below="@id/runtimeText"
-            android:layout_margin="@dimen/margin"
-            android:text="@string/button"
-            android:checked="true" />
+            android:layout_marginStart="@dimen/margin"
+            android:layout_marginTop="@dimen/margin"
+            android:layout_marginEnd="@dimen/margin"
+            android:layout_marginBottom="@dimen/margin"
+            android:checked="false"
+            android:text="@string/button" />
 
     </RelativeLayout>
 
