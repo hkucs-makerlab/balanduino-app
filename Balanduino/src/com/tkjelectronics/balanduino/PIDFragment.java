@@ -189,25 +189,29 @@ public class PIDFragment extends Fragment {
     }
 
     public static void updateView() {
-        if (mKpView != null && mKpSeekBar != null && mKpSeekBarValue != null && !BalanduinoActivity.pValue.isEmpty()) {
-            mKpView.setText(BalanduinoActivity.pValue);
-            mKpSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.pValue))); // Two decimal places
-            mKpSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.pValue) * 100.0f));
-        }
-        if (mKiView != null && mKiSeekBar != null && mKiSeekBarValue != null && !BalanduinoActivity.iValue.isEmpty()) {
-            mKiView.setText(BalanduinoActivity.iValue);
-            mKiSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.iValue))); // Two decimal places
-            mKiSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.iValue) * 100.0f));
-        }
-        if (mKdView != null && mKdSeekBar != null && mKdSeekBarValue != null && !BalanduinoActivity.dValue.isEmpty()) {
-            mKdView.setText(BalanduinoActivity.dValue);
-            mKdSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.dValue))); // Two decimal places
-            mKdSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.dValue) * 100.0f));
-        }
-        if (mTargetAngleView != null && mTargetAngleSeekBar != null && mTargetAngleSeekBarValue != null && !BalanduinoActivity.targetAngleValue.isEmpty()) {
-            mTargetAngleView.setText(BalanduinoActivity.targetAngleValue);
-            mTargetAngleSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.targetAngleValue))); // Two decimal places
-            mTargetAngleSeekBar.setProgress((int) ((Float.parseFloat(BalanduinoActivity.targetAngleValue) - 150.0f) * 10.0f));
+        try {
+            if (mKpView != null && mKpSeekBar != null && mKpSeekBarValue != null && !BalanduinoActivity.pValue.isEmpty()) {
+                mKpView.setText(BalanduinoActivity.pValue);
+                mKpSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.pValue))); // Two decimal places
+                mKpSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.pValue) * 100.0f));
+            }
+            if (mKiView != null && mKiSeekBar != null && mKiSeekBarValue != null && !BalanduinoActivity.iValue.isEmpty()) {
+                mKiView.setText(BalanduinoActivity.iValue);
+                mKiSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.iValue))); // Two decimal places
+                mKiSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.iValue) * 100.0f));
+            }
+            if (mKdView != null && mKdSeekBar != null && mKdSeekBarValue != null && !BalanduinoActivity.dValue.isEmpty()) {
+                mKdView.setText(BalanduinoActivity.dValue);
+                mKdSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.dValue))); // Two decimal places
+                mKdSeekBar.setProgress((int) (Float.parseFloat(BalanduinoActivity.dValue) * 100.0f));
+            }
+            if (mTargetAngleView != null && mTargetAngleSeekBar != null && mTargetAngleSeekBarValue != null && !BalanduinoActivity.targetAngleValue.isEmpty()) {
+                mTargetAngleView.setText(BalanduinoActivity.targetAngleValue);
+                mTargetAngleSeekBarValue.setText(String.format("%.2f", Float.parseFloat(BalanduinoActivity.targetAngleValue))); // Two decimal places
+                mTargetAngleSeekBar.setProgress((int) ((Float.parseFloat(BalanduinoActivity.targetAngleValue) - 150.0f) * 10.0f));
+            }
+        } catch (NumberFormatException e) {
+            Log.e(TAG, "updateView() : failed from string to value!");
         }
     }
 
