@@ -33,7 +33,6 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.hardware.SensorManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -58,9 +57,11 @@ public class BalanduinoActivity extends AppCompatActivity implements
     // Message types sent from the BluetoothChatService Handler
     public static final int MESSAGE_STATE_CHANGE = 1;
     public static final int MESSAGE_READ = 2;
+    /*
     public static final int MESSAGE_DEVICE_NAME = 3;
     public static final int MESSAGE_DISCONNECTED = 4;
     public static final int MESSAGE_RETRY = 5;
+    */
     // Key names received from the BluetoothChatService Handler
     public static final String DEVICE_NAME = "device_name";
     public static final String TOAST = "toast";
@@ -150,27 +151,8 @@ public class BalanduinoActivity extends AppCompatActivity implements
     private BluetoothScan mBluetoothScan;
     //
     private MenuItem menuItemConnect;
+    private SharedPreferences mPreferences;
 
-    // Check the tab to the left as well in landscape mode
-    public static boolean checkTab(int tab) {
-        return (currentTabSelected == tab ||
-                (context.getResources().getBoolean(R.bool.isTablet) &&
-                        context.getResources().getConfiguration().orientation ==
-                                Configuration.ORIENTATION_LANDSCAPE && currentTabSelected == tab - 1));
-    }
-
-    public static int getRotation() {
-        return activity.getWindowManager().getDefaultDisplay().getRotation();
-    }
-
-    public static void showToast(String message, int duration) {
-        if (duration != Toast.LENGTH_SHORT && duration != Toast.LENGTH_LONG)
-            throw new IllegalArgumentException();
-        if (mToast != null)
-            mToast.cancel(); // Close the toast if it's already open
-        mToast = Toast.makeText(context, message, duration);
-        mToast.show();
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -262,18 +244,23 @@ public class BalanduinoActivity extends AppCompatActivity implements
         if (D)
             Log.d(LOG_TAG, "++ ON START ++");
 
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this); // Create SharedPreferences instance
-        String filterCoefficient = preferences.getString("filterCoefficient", null); // Read the stored value for filter coefficient
+        mPreferences = PreferenceManager.getDefaultSharedPreferences(this); // Create SharedPreferences instance
+        String filterCoefficient = mPreferences.getString("filterCoefficient", null); // Read the stored value for filter coefficient
         if (filterCoefficient != null) {
             mSensorFusion.filter_coefficient = Float.parseFloat(filterCoefficient);
             mSensorFusion.tempFilter_coefficient = mSensorFusion.filter_coefficient;
         }
         // Read the previous back to spot value
-        backToSpot = preferences.getBoolean("backToSpot", true); // Back to spot is true by default
+        backToSpot = mPreferences.getBoolean("backToSpot", true); // Back to spot is true by default
         // Read the previous max angle
-        maxAngle = preferences.getInt("maxAngle", 8); // Eight is the default value
+        maxAngle = mPreferences.getInt("maxAngle", 8); // Eight is the default value
         // Read the previous max turning value
-        maxTurning = preferences.getInt("maxTurning", 20); // Twenty is the default value
+        maxTurning = mPreferences.getInt("maxTurning", 20); // Twenty is the default value
+        String bluetothDeviceAddr = mPreferences.getString("bt_remote_device", null);
+        if (bluetothDeviceAddr != null) {
+            BluetoothDevice mBluetoothDevice = mBluetoothScan.getBluetoothDevice(bluetothDeviceAddr);
+            mBluetoothConnect.connectBluetooth(mBluetoothDevice);
+        }
     }
 
     @Override
@@ -281,10 +268,10 @@ public class BalanduinoActivity extends AppCompatActivity implements
         super.onStop();
         if (D)
             Log.d(LOG_TAG, "-- ON STOP --");
-        // unregister sensor listeners to prevent the activity from draining the
-        // device's battery.
-        mSensorFusion.unregisterListeners();
-
+        //
+        if (mChatService != null) {
+            mChatService.stop();
+        }
         // Store the value for FILTER_COEFFICIENT and max angle at shutdown
         Editor edit = PreferenceManager.getDefaultSharedPreferences(this).edit();
         edit.putString("filterCoefficient", Float.toString(mSensorFusion.filter_coefficient));
@@ -292,6 +279,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
         edit.putInt("maxAngle", maxAngle);
         edit.putInt("maxTurning", maxTurning);
         edit.commit();
+
     }
 
     @Override
@@ -314,9 +302,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
             Log.d(LOG_TAG, "--- ON DESTROY ---");
         if (mSensorFusion != null) {
             mSensorFusion.unregisterListeners();
-        }
-        if (mChatService != null) {
-            mChatService.stop();
         }
     }
 
@@ -342,6 +327,28 @@ public class BalanduinoActivity extends AppCompatActivity implements
         mSensorFusion.initListeners();
     }
 
+    // Check the tab to the left as well in landscape mode
+    public static boolean checkTab(int tab) {
+        return (currentTabSelected == tab ||
+                (context.getResources().getBoolean(R.bool.isTablet) &&
+                        context.getResources().getConfiguration().orientation ==
+                                Configuration.ORIENTATION_LANDSCAPE && currentTabSelected == tab - 1));
+    }
+
+
+    public static int getRotation() {
+        return activity.getWindowManager().getDefaultDisplay().getRotation();
+    }
+
+    public static void showToast(String message, int duration) {
+        if (duration != Toast.LENGTH_SHORT && duration != Toast.LENGTH_LONG)
+            throw new IllegalArgumentException();
+        if (mToast != null)
+            mToast.cancel(); // Close the toast if it's already open
+        mToast = Toast.makeText(context, message, duration);
+        mToast.show();
+    }
+
     // TabLayout.OnTabSelectedListener
     @Override
     public void onTabSelected(TabLayout.Tab tab) {
@@ -351,61 +358,73 @@ public class BalanduinoActivity extends AppCompatActivity implements
         currentTabSelected = tab.getPosition();
         mViewPager.setCurrentItem(currentTabSelected);
         //
-        if (false) {
-            Resources mResources = getResources();
-            if (mResources.getBoolean(R.bool.isTablet) &&
-                    mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE &&
-                    currentTabSelected == ViewPagerAdapter.INFO_FRAGMENT) { // Check if the last tab is selected in landscape mode
-                currentTabSelected -= 1; // If so don't go any further
-            }
-            if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT) && mChatService != null) {
-                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
-                    mChatService.write(getKalman);
-                    if (GraphFragment.mToggleButton != null) {
-                        if (GraphFragment.mToggleButton.isChecked())
-                            mChatService.write(imuBegin); // Request data
-                        else
-                            mChatService.write(imuStop); // Stop sending data
-                    }
-                }
-            } else if (checkTab(ViewPagerAdapter.INFO_FRAGMENT) && mChatService != null) {
-                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
-                    mChatService.write(getInfo); // Update info
-                    if (InfoFragment.mToggleButton != null) {
-                        if (InfoFragment.mToggleButton.isChecked())
-                            mChatService.write(statusBegin); // Request data
-                        else
-                            mChatService.write(statusStop); // Stop sending data
-                    }
+        Resources mResources = getResources();
+        if (mResources.getBoolean(R.bool.isTablet) &&
+                mResources.getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE &&
+                currentTabSelected == ViewPagerAdapter.INFO_FRAGMENT) { // Check if the last tab is selected in landscape mode
+            currentTabSelected -= 1; // If so don't go any further
+        }
+
+        if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT) && mChatService != null) {
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                mChatService.write(getKalman);
+                Log.e(LOG_TAG, "onTabSelected() : sent getKalman ");
+                if (GraphFragment.mToggleButton != null) {
+                    if (GraphFragment.mToggleButton.isChecked())
+                        mChatService.write(imuBegin); // Request data
+                    else
+                        mChatService.write(imuStop); // Stop sending data
                 }
             }
-            if (!checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) { // Needed when the user rotates the screen
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); // Hide the keyboard
-                imm.hideSoftInputFromWindow(getWindow().getDecorView().getApplicationWindowToken(), 0);
+        } else if (checkTab(ViewPagerAdapter.INFO_FRAGMENT) && mChatService != null) {
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                mChatService.write(getInfo); // Update info
+                Log.e(LOG_TAG, "onTabSelected() : sent getInfo ");
+                if (InfoFragment.mToggleButton != null) {
+                    if (InfoFragment.mToggleButton.isChecked())
+                        mChatService.write(statusBegin); // Request data
+                    else
+                        mChatService.write(statusStop); // Stop sending data
+                }
+            }
+        } else if (checkTab(ViewPagerAdapter.PID_FRAGMENT) && mChatService != null) {
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                mChatService.write(getPIDValues);
+                Log.e(LOG_TAG, "onTabSelected() : sent getPIDValues ");
             }
         }
+
+        if (!checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) { // Needed when the user rotates the screen
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); // Hide the keyboard
+            imm.hideSoftInputFromWindow(getWindow().getDecorView().getApplicationWindowToken(), 0);
+        }
+
     }
 
     @Override
     public void onTabUnselected(TabLayout.Tab tab) {
         if (D)
-            Log.d(LOG_TAG, "onTabUnselected: " + tab.getPosition() + " " + currentTabSelected);
-        if (false) {
-            if ((checkTab(ViewPagerAdapter.IMU_FRAGMENT) ||
-                    checkTab(ViewPagerAdapter.JOYSTICK_FRAGMENT)) && mChatService != null) { // Send stop command if the user selects another tab
-                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
-                    mChatService.write(sendStop);
-            } else if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT) && mChatService != null) {
-                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
-                    mChatService.write(imuStop);
-            } else if (checkTab(ViewPagerAdapter.INFO_FRAGMENT) && mChatService != null) {
-                if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
-                    mChatService.write(statusStop);
+            Log.e(LOG_TAG, "onTabUnselected: " + currentTabSelected);
+
+        if ((checkTab(ViewPagerAdapter.IMU_FRAGMENT) ||
+                checkTab(ViewPagerAdapter.JOYSTICK_FRAGMENT)) && mChatService != null) { // Send stop command if the user selects another tab
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED)
+                mChatService.write(sendStop);
+        } else if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT) && mChatService != null) {
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                mChatService.write(imuStop);
+                GraphFragment.mToggleButton.setChecked(false);
+                GraphFragment.mToggleButton.setText("Start");
             }
-            if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) {
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); // Hide the keyboard
-                imm.hideSoftInputFromWindow(getWindow().getDecorView().getApplicationWindowToken(), 0);
+        } else if (checkTab(ViewPagerAdapter.INFO_FRAGMENT) && mChatService != null) {
+            if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
+                mChatService.write(statusStop);
+                InfoFragment.mToggleButton.setChecked(false);
             }
+        }
+        if (checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE); // Hide the keyboard
+            imm.hideSoftInputFromWindow(getWindow().getDecorView().getApplicationWindowToken(), 0);
         }
     }
 
@@ -419,7 +438,7 @@ public class BalanduinoActivity extends AppCompatActivity implements
         if (D)
             Log.d(LOG_TAG, "onPrepareOptionsMenu");
         menuItemConnect = menu.findItem(R.id.menu_connect); // Find item
-        if(mBluetoothConnect.isConnected()){
+        if (mBluetoothConnect.isConnected()) {
             menuItemConnect.setIcon(R.drawable.device_access_bluetooth_connected);
         } else {
             menuItemConnect.setIcon(R.drawable.device_access_bluetooth);
@@ -440,16 +459,15 @@ public class BalanduinoActivity extends AppCompatActivity implements
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_connect:
-                // Launch the DeviceListActivity to see devices and do scan
-                /*
-                if (mBluetoothConnect.isConnected()) {
-                    mBluetoothConnect.disconnectBluetooth();
-                    return true;
-                }
-                 */
                 if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
                     mChatService.stop();
                     menuItemConnect.setIcon(R.drawable.device_access_bluetooth);
+                    //supportInvalidateOptionsMenu();
+                    PIDFragment.updateButton();
+                    //
+                    SharedPreferences.Editor preferencesEditor = mPreferences.edit();
+                    preferencesEditor.remove("bt_remote_device");
+                    preferencesEditor.apply();
                     return true;
                 }
                 Intent intent = new Intent(this, BluetoothDevListActivity.class);
@@ -477,34 +495,21 @@ public class BalanduinoActivity extends AppCompatActivity implements
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (D)
             Log.d(LOG_TAG, "onActivityResult() : result code " + resultCode);
-        switch (requestCode) {
-            case REQUEST_CONNECT_DEVICE:
-                if (resultCode == RESULT_OK) {
-                    BluetoothDevice bluetoothDevice = data.getParcelableExtra(BluetoothDevListActivity.EXTRA_KEY_DEVICE);
-                    if (bluetoothDevice != null) {
-                        mBluetoothConnect.connectBluetooth(bluetoothDevice);
-                        if (D)
-                            Log.e(LOG_TAG, "onActivityResult() - connecting");
-                    }
-                } else if (resultCode == RESULT_CANCELED) {
-                    if (D)
-                        Log.e(LOG_TAG, "onActivityResult() - canceled");
-                }
-                break;
-            case REQUEST_ENABLE_BT:
-                // When the request to enable Bluetooth returns
-                /*
-                if (resultCode == Activity.RESULT_OK)
-                    setupBTService(); // Bluetooth is now enabled, so set up a chat session
-                else {
-                    // User did not enable Bluetooth or an error occured
-                    if (D)
-                        Log.d(LOG_TAG, "onActivityResult() : BT not enabled");
-                    showToast(getString(R.string.bt_not_enabled_leaving), Toast.LENGTH_SHORT);
-                    finish();
-                }
-                 */
+        if (requestCode != REQUEST_CONNECT_DEVICE) {
+            return;
         }
+        if (resultCode == RESULT_OK) {
+            BluetoothDevice bluetoothDevice = data.getParcelableExtra(BluetoothDevListActivity.EXTRA_KEY_DEVICE);
+            if (bluetoothDevice != null) {
+                mBluetoothConnect.connectBluetooth(bluetoothDevice);
+                if (D)
+                    Log.e(LOG_TAG, "onActivityResult() - connecting");
+            }
+        } else if (resultCode == RESULT_CANCELED) {
+            if (D)
+                Log.e(LOG_TAG, "onActivityResult() - canceled");
+        }
+
     }
 
     @Override
@@ -521,6 +526,9 @@ public class BalanduinoActivity extends AppCompatActivity implements
     public void onConnectionSuccess(BluetoothConnect self) {
         if (D)
             Log.e(LOG_TAG, "onConnectionSuccess() :");
+        SharedPreferences.Editor preferencesEditor = mPreferences.edit();
+        preferencesEditor.putString("bt_remote_device", mBluetoothConnect.getDeviceAddress());
+        preferencesEditor.apply();
 
         runOnUiThread(new Thread() {
             public void run() {
@@ -532,6 +540,8 @@ public class BalanduinoActivity extends AppCompatActivity implements
 
     @Override
     public void onConnectionFail(BluetoothConnect self) {
+
+
         runOnUiThread(new Thread() {
             public void run() {
                 Toast.makeText(getApplicationContext(),
@@ -552,15 +562,16 @@ public class BalanduinoActivity extends AppCompatActivity implements
                 Toast.makeText(getApplicationContext(),
                         "Connection Lost!",
                         Toast.LENGTH_LONG).show();
+                //supportInvalidateOptionsMenu();
+                PIDFragment.updateButton();
             }
         });
         if (D)
             Log.e(LOG_TAG, "onDisconnected() :");
     }
 
-    static class BluetoothHandler extends Handler {
+    class BluetoothHandler extends Handler {
         private final BalanduinoActivity mBalanduinoActivity;
-        private String mConnectedDeviceName; // Name of the connected device
 
         BluetoothHandler(BalanduinoActivity mBalanduinoActivity) {
             this.mBalanduinoActivity = mBalanduinoActivity;
@@ -570,20 +581,27 @@ public class BalanduinoActivity extends AppCompatActivity implements
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MESSAGE_STATE_CHANGE:
-                    mBalanduinoActivity.supportInvalidateOptionsMenu();
-                    if (D)
-                        Log.i(LOG_TAG, "handleMessage() : MESSAGE_STATE_CHANGE: " + msg.arg1);
+                    mBalanduinoActivity.supportInvalidateOptionsMenu();  // to show icon for bluetooth connected
+                    if (msg.arg1 == BluetoothChatService.STATE_CONNECTED) {
+                        BalanduinoActivity.showToast(mBalanduinoActivity.getString(R.string.connected_to) +
+                                " " + mBluetoothConnect.getDeviceName(), Toast.LENGTH_SHORT);
+                        //mChatService.write(getKalman);
+                    }
+                    /*
                     switch (msg.arg1) {
                         case BluetoothChatService.STATE_CONNECTED:
-                            BalanduinoActivity.showToast(mBalanduinoActivity.getString(R.string.connected_to) + " " + mConnectedDeviceName, Toast.LENGTH_SHORT);
+                            BalanduinoActivity.showToast(mBalanduinoActivity.getString(R.string.connected_to) +
+                                    " " + mBluetoothConnect.getDeviceName(), Toast.LENGTH_SHORT);
                             if (mChatService == null)
                                 return;
+
                             Handler mHandler = new Handler();
                             mHandler.postDelayed(new Runnable() {
                                 public void run() {
                                     mChatService.write(getPIDValues + getSettings + getInfo + getKalman);
                                 }
                             }, 1000); // Wait 1 second before sending the message
+
                             if (GraphFragment.mToggleButton != null) {
                                 if (GraphFragment.mToggleButton.isChecked() && checkTab(ViewPagerAdapter.GRAPH_FRAGMENT)) {
                                     mHandler.postDelayed(new Runnable() {
@@ -606,12 +624,10 @@ public class BalanduinoActivity extends AppCompatActivity implements
                                     }
                                 }, 1000); // Wait 1 second before sending the message
                             }
+
                             break;
-                            /*
-                        case BluetoothChatService.STATE_CONNECTING:
-                            break;
-                             */
                     }
+                     */
                     PIDFragment.updateButton();
                     break;
                 case MESSAGE_READ:
@@ -636,22 +652,6 @@ public class BalanduinoActivity extends AppCompatActivity implements
                         pairingWithDevice = false;
                         BalanduinoActivity.showToast("Now enable discovery of your device", Toast.LENGTH_LONG);
                     }
-                    break;
-                case MESSAGE_DEVICE_NAME:
-                    // Save the connected device's name
-                    if (msg.getData() != null)
-                        mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
-                    break;
-                case MESSAGE_DISCONNECTED:
-                    mBalanduinoActivity.supportInvalidateOptionsMenu();
-                    PIDFragment.updateButton();
-                    if (msg.getData() != null)
-                        BalanduinoActivity.showToast(msg.getData().getString(TOAST), Toast.LENGTH_SHORT);
-                    break;
-                case MESSAGE_RETRY:
-                    if (D)
-                        Log.d(LOG_TAG, "MESSAGE_RETRY");
-                    // mBalanduinoActivity.connectDevice(null, true);
                     break;
             }
         }
