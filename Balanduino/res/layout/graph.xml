@@ -119,9 +119,9 @@
             <ToggleButton
                 android:id="@+id/toggleButton"
                 android:layout_width="0dp"
-                android:layout_weight="1"
                 android:layout_height="match_parent"
-                android:checked="true" />
+                android:layout_weight="1"
+                android:checked="false" />
 
             <Button
                 android:id="@+id/updateButton"
