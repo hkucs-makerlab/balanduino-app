@@ -16,12 +16,11 @@
 
 package com.tkjelectronics.balanduino;
 
-import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 
 import com.makerlab.bt.BluetoothConnect;
+
 /**
  * This class does all the work for setting up and managing Bluetooth
  * connections with other devices. It has a thread for connecting with a device,
@@ -83,12 +82,13 @@ public class BluetoothChatService {
         mConnectedThread.start();
 
         // Send the name of the connected device back to the UI Activity
+        /*
         Message msg = mHandler.obtainMessage(BalanduinoActivity.MESSAGE_DEVICE_NAME);
         Bundle bundle = new Bundle();
         bundle.putString(BalanduinoActivity.DEVICE_NAME, mBluetoothConnect.getDeviceName());
         msg.setData(bundle);
         mHandler.sendMessage(msg);
-
+         */
         setState(STATE_CONNECTED);
     }
 
@@ -150,6 +150,7 @@ public class BluetoothChatService {
             while (!stopReading) {
                 if (mBluetoothConnect.available() > 0) { // Check if new data is available
                     String readMessage = mBluetoothConnect.read(); // Read from the InputStream
+                    if (readMessage==null) continue;
                     String[] splitMessage = readMessage.split(",");
                     if (D) {
                         Log.e(TAG, "Received string: " + readMessage);
@@ -171,9 +172,15 @@ public class BluetoothChatService {
 
                     } else if (splitMessage[0].equals(BalanduinoActivity.responseSettings) &&
                             splitMessage.length == BalanduinoActivity.responseSettingsLength) {
-                        BalanduinoActivity.backToSpot = splitMessage[1].equals("1");
-                        BalanduinoActivity.maxAngle = Integer.parseInt(splitMessage[2]);
-                        BalanduinoActivity.maxTurning = Integer.parseInt(splitMessage[3]);
+                        try {
+                            BalanduinoActivity.backToSpot = splitMessage[1].equals("1");
+                            BalanduinoActivity.maxAngle = Integer.parseInt(splitMessage[2]);
+                            BalanduinoActivity.maxTurning = Integer.parseInt(splitMessage[3]);
+                        } catch (NumberFormatException e) {
+                            if (D)
+                                Log.e(TAG, "Failed from string to Integer!");
+                            return;
+                        }
 
                     } else if (splitMessage[0].equals(BalanduinoActivity.responseInfo) &&
                             splitMessage.length == BalanduinoActivity.responseInfoLength) {
@@ -185,11 +192,16 @@ public class BluetoothChatService {
 
                     } else if (splitMessage[0].equals(BalanduinoActivity.responseStatus) &&
                             splitMessage.length == BalanduinoActivity.responseStatusLength) {
-                        BalanduinoActivity.batteryLevel = splitMessage[1];
-                        BalanduinoActivity.runtime = Double.parseDouble(splitMessage[2]);
-                        BalanduinoActivity.newStatus = true;
-                        mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
-
+                        try {
+                            BalanduinoActivity.batteryLevel = splitMessage[1];
+                            BalanduinoActivity.runtime = Double.parseDouble(splitMessage[2]);
+                            BalanduinoActivity.newStatus = true;
+                            mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
+                        } catch (NumberFormatException e) {
+                            if (D)
+                                Log.e(TAG, "Failed from string to Double!");
+                            return;
+                        }
                     } else if (splitMessage[0].equals(BalanduinoActivity.responseKalmanValues) &&
                             splitMessage.length == BalanduinoActivity.responseKalmanValuesLength) {
                         BalanduinoActivity.Qangle = splitMessage[1];
@@ -211,6 +223,7 @@ public class BluetoothChatService {
                         BalanduinoActivity.pairingWithDevice = true;
                         mHandler.obtainMessage(BalanduinoActivity.MESSAGE_READ).sendToTarget(); // Send message back to the UI Activity
                     }
+
                 }
 
             }
