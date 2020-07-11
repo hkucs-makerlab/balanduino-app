@@ -1,2 +1,2 @@
-include ':Balanduino', ':GraphView', ':PhysicaloidLibrary', ':libBT'
+include ':Balanduino', ':GraphView', ':PhysicaloidLibrary', ':libBT', ':libSPP'
 rootProject.name='BalanDuino '
