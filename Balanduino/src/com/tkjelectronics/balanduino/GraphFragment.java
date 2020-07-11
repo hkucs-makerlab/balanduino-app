@@ -97,23 +97,20 @@ public class GraphFragment extends Fragment {
         graphView.setManualYAxisBounds(360, 0);
         graphView.setViewPort(0, 100);
         graphView.setScrollable(true);
+        graphView.scrollToEnd();
         graphView.setDisableTouch(true);
-
         graphView.setShowLegend(true);
         graphView.setLegendAlign(LegendAlign.BOTTOM);
-        graphView.scrollToEnd();
-
-        LinearLayout layout = (LinearLayout) v.findViewById(R.id.linegraph);
-
+        //
         GraphViewStyle mGraphViewStyle = new GraphViewStyle();
         mGraphViewStyle.setNumHorizontalLabels(11);
         mGraphViewStyle.setNumVerticalLabels(9);
-        mGraphViewStyle.setTextSize(15);
+        mGraphViewStyle.setTextSize(18);
         mGraphViewStyle.setLegendWidth(140);
-        mGraphViewStyle.setLegendMarginBottom(30);
-
+        mGraphViewStyle.setLegendMarginBottom(50);
         graphView.setGraphViewStyle(mGraphViewStyle);
-
+        //
+        LinearLayout layout = (LinearLayout) v.findViewById(R.id.linegraph);
         layout.addView(graphView);
 
         mCheckBox1 = (CheckBox) v.findViewById(R.id.checkBox1);
